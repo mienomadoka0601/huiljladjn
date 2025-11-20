@@ -72,7 +72,7 @@ Expr List::parse(Assoc &env) {
         {
             parameters.push_back(stxs[i]->parse(env));
         }
-        return Expr (new Apply (parameters[0], vector<Expr> (parameters.begin()+1, parameters.end())));
+        return Expr (new Apply (parameters[0],parameters));
     }else{
     string op = id->s;
     if (find(op, env).get() != nullptr) {
@@ -188,6 +188,59 @@ Expr List::parse(Assoc &env) {
         } else if(op_type==E_NOT){
             if(parameters.size()!=1) throw RuntimeError("Wrong number of arguments for not");
             return Expr(new Not(parameters[0]));
+        }else if(op_type==E_CONS){
+            if(parameters.size()!=2) throw RuntimeError("Wrong number of arguments for cons");
+            return Expr(new Cons(parameters[0],parameters[1]));
+        }else if(op_type==E_CAR){
+            if(parameters.size()!=1) throw RuntimeError("Wrong number of arguments for car");
+            return Expr(new Car(parameters[0]));
+        }else if(op_type==E_CDR){
+            if(parameters.size()!=1) throw RuntimeError("Wrong number of arguments for cdr");
+            return Expr(new Cdr(parameters[0]));
+        }else if(op_type==E_LIST){
+            return Expr(new ListFunc(parameters));
+        }else if(op_type==E_SETCAR){
+            if(parameters.size()!=2) throw RuntimeError("Wrong number of arguments for setcar");
+            return Expr(new SetCar(parameters[0],parameters[1]));
+        }else if(op_type==E_SETCDR){
+            if(parameters.size()!=2) throw RuntimeError("Wrong number of arguments for setcdr");
+            return Expr(new SetCdr(parameters[0],parameters[1]));
+        }else if(op_type==E_EQQ){
+            if(parameters.size()!=2) throw RuntimeError("Wrong number of arguments for eq?");
+            return Expr(new IsEq(parameters[0],parameters[1]));
+        }else if(op_type==E_BOOLQ){
+            if(parameters.size()!=1) throw RuntimeError("Wrong number of arguments for boolean?");
+            return Expr(new IsBoolean(parameters[0]));
+        }else if(op_type==E_INTQ){
+            if(parameters.size()!=1) throw RuntimeError("Wrong number of arguments for number?");
+            return Expr(new IsFixnum(parameters[0]));
+        }else if(op_type==E_NULLQ){
+            if(parameters.size()!=1) throw RuntimeError("Wrong number of arguments for null?");
+            return Expr(new IsNull(parameters[0]));
+        }else if(op_type==E_PAIRQ){
+            if(parameters.size()!=1) throw RuntimeError("Wrong number of arguments for pair?");
+            return Expr(new IsPair(parameters[0]));
+        }else if(op_type==E_PROCQ){
+            if(parameters.size()!=1) throw RuntimeError("Wrong number of arguments for procedure?");
+            return Expr(new IsProcedure(parameters[0]));
+        }else if(op_type==E_SYMBOLQ){
+            if(parameters.size()!=1) throw RuntimeError("Wrong number of arguments for symbol?");
+            return Expr(new IsSymbol(parameters[0]));
+        }else if(op_type==E_LISTQ){
+            if(parameters.size()!=1) throw RuntimeError("Wrong number of arguments for list?");
+            return Expr(new IsList(parameters[0]));
+        }else if(op_type==E_STRINGQ){
+            if(parameters.size()!=1) throw RuntimeError("Wrong number of arguments for string?");
+            return Expr(new IsString(parameters[0]));
+        }else if(op_type==E_EXIT){
+            if(!parameters.empty()) throw RuntimeError("Wrong number of arguments for exit");
+            return Expr(new Exit());
+        }else if(op_type==E_DISPLAY){
+            if(parameters.size()!=1) throw RuntimeError("Wrong number of arguments for display");
+            return Expr(new Exit());
+        }else if(op_type==E_VOID){
+            if(!parameters.empty()) throw RuntimeError("Wrong number of arguments for void");
+            return Expr(new MakeVoid());
         }else {
             //TODO: TO COMPLETE THE LOGIC
             throw RuntimeError("Unknown primitive operation");

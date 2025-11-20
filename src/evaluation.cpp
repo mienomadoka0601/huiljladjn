@@ -19,7 +19,7 @@
 
 extern std::map<std::string, ExprType> primitives;
 extern std::map<std::string, ExprType> reserved_words;
-static Value syntaxToValue(const Syntax &stx) {
+Value syntaxToValue(const Syntax &stx) {
     if (Number *num = dynamic_cast<Number*>(stx.get())) {
         return IntegerV(num->n);
     }
@@ -39,10 +39,39 @@ static Value syntaxToValue(const Syntax &stx) {
         return StringV(str->s);
     }
     if (List *lst = dynamic_cast<List*>(stx.get())) {
+        const auto& stxs=lst->stxs;
         Value result = NullV();
-        for (auto it = lst->stxs.rbegin(); it != lst->stxs.rend(); ++it) {
-            Value v = syntaxToValue(*it);
-            result = PairV(v, result);
+        int dot_pos=-1;
+        for (int i=0;i<stxs.size();++i) {
+            if(auto m=dynamic_cast<SymbolSyntax*>(stxs[i].get())){
+                if (m->s == ".") 
+                    dot_pos = i;
+            }
+        }
+        if(dot_pos!=-1){
+            Value car_list=NullV();
+            for(int i=dot_pos-1;i>=0;i--){
+                car_list=PairV(syntaxToValue(stxs[i]),car_list);
+            }
+            Value cdr=syntaxToValue(stxs[dot_pos+1]);
+            if(car_list->v_type==V_NULL){
+                return cdr;
+            }
+            else{
+                Value current=car_list;
+                while(1){
+                    Pair* pair=dynamic_cast<Pair*>(current.get());
+                    if(pair->cdr->v_type){
+                        pair->cdr=cdr;
+                        break;
+                    }
+                    current=pair->cdr;
+                }
+                return car_list;
+            }
+        }
+        for (int i = stxs.size() - 1; i >= 0; --i) {
+            result = PairV(syntaxToValue(stxs[i]), result);
         }
         return result;
     }
@@ -122,6 +151,21 @@ Value Var::eval(Assoc &e) { // evaluation of variable
                     {E_MODULO,   {new Modulo(new Var("parm1"), new Var("parm2")), {"parm1","parm2"}}},
                     {E_EXPT,     {new Expt(new Var("parm1"), new Var("parm2")), {"parm1","parm2"}}},
                     {E_EQQ,      {new EqualVar({}), {}}},
+                    {E_EQ,       {new EqualVar({}), {}}},
+                    {E_LT,       {new LessVar({}), {}}},
+                    {E_LE,       {new LessEqVar({}), {}}},
+                    {E_GE,       {new GreaterEqVar({}), {}}},
+                    {E_GT,       {new GreaterVar({}), {}}},
+                    {E_CONS,     {new Cons(new Var("parm1"), new Var("parm2")), {"parm1","parm2"}}},
+                    {E_CAR,      {new Car(new Var("parm")), {"parm"}}},
+                    {E_CDR,      {new Cdr(new Var("parm")), {"parm"}}},
+                    {E_NOT,      {new Not(new Var("parm")), {"parm"}}},
+                    {E_LIST,     {new ListFunc({}), {}}},
+                    {E_LISTQ,    {new IsList(new Var("parm")), {"parm"}}},
+                    {E_SETCAR,   {new SetCar(new Var("parm1"), new Var("parm2")), {"parm1","parm2"}}},
+                    {E_SETCDR,   {new SetCdr(new Var("parm1"), new Var("parm2")), {"parm1","parm2"}}},
+                    {E_AND,      {new AndVar({}), {}}},
+                    {E_OR,       {new OrVar({}), {}}}
             };
 
             auto it = primitive_map.find(primitives[x]);
@@ -129,7 +173,7 @@ Value Var::eval(Assoc &e) { // evaluation of variable
             //COMPLETE THE CODE WITH THE HINT IN IF SENTENCE WITH CORRECT RETURN VALUE
             if (it != primitive_map.end()) {
                 //TODO
-                return ProcedureV(it->second.second, it->second.first, empty());
+                return ProcedureV(it->second.second, it->second.first,e);
             }
       }
     }
@@ -699,7 +743,7 @@ Value AndVar::eval(Assoc &e) { // and with short-circuit evaluation
     //TODO: To complete the and logic
     AndVar *and_ptr = dynamic_cast<AndVar*>(this);
     if (and_ptr->rands.empty()) return BooleanV(true);
-    Value last = VoidV();
+    Value last = BooleanV(true);
     for (auto &rand : and_ptr->rands) {
         Value val = rand->eval(e);
         if (val->v_type == V_BOOL) {
@@ -729,7 +773,7 @@ Value OrVar::eval(Assoc &e) { // or with short-circuit evaluation
 
 Value Not::evalRator(const Value &rand) { // not
     //TODO: To complete the not logic
-    if (rand->v_type != V_BOOL) return BooleanV(true);
+    if (rand->v_type != V_BOOL) return BooleanV(false);
     Boolean *b = dynamic_cast<Boolean*>(rand.get());
     return BooleanV(!b->b);
 }
