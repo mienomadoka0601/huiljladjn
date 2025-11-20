@@ -177,6 +177,7 @@ Value Var::eval(Assoc &e) { // evaluation of variable
                 return ProcedureV(it->second.second, it->second.first,e);
             }
       }
+      throw(RuntimeError("Undefined variable"+x));
     }
     return matched_value;
 }
@@ -634,7 +635,7 @@ Value ListFunc::evalRator(const std::vector<Value> &args) { // list function
 Value IsList::evalRator(const Value &rand) { // list?
     //TODO: To complete the list? logic
     Value temp=rand;
-    while(temp->v_type=V_PAIR){
+    while(temp->v_type==V_PAIR){
         temp=dynamic_cast<Pair*>(temp.get())->cdr;
     }
     return BooleanV(rand->v_type == V_NULL);
@@ -848,14 +849,14 @@ Value Apply::eval(Assoc &e) {
 
 Value Define::eval(Assoc &env) {
     //TODO: To complete the define logic
-    Define *def_ptr = dynamic_cast<Define*>(this);
-    Value val = def_ptr->e->eval(env);
-    Value existing = find(def_ptr->var, env);
-    if (existing.get() != nullptr) {
-        modify(def_ptr->var, val, env);
-    } else {
-        env = extend(def_ptr->var, val, env);
+    Assoc newenv=env;
+    if(!newenv.get()){
+        auto head=Assoc(nullptr);
+        newenv=extend(var,Value(nullptr),newenv);
     }
+    else newenv->next=extend(var,Value(nullptr),newenv->next);
+    modify(var,e->eval(newenv),newenv);
+    env=newenv;
     return VoidV();
 }
 
