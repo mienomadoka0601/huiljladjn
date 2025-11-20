@@ -40,6 +40,7 @@ Value syntaxToValue(const Syntax &stx) {
     }
     if (List *lst = dynamic_cast<List*>(stx.get())) {
         const auto& stxs=lst->stxs;
+        if(stxs.empty()) return NullV();
         Value result = NullV();
         int dot_pos=-1;
         for (int i=0;i<stxs.size();++i) {
@@ -61,7 +62,7 @@ Value syntaxToValue(const Syntax &stx) {
                 Value current=car_list;
                 while(1){
                     Pair* pair=dynamic_cast<Pair*>(current.get());
-                    if(pair->cdr->v_type){
+                    if(pair->cdr->v_type==V_NULL){
                         pair->cdr=cdr;
                         break;
                     }
@@ -780,38 +781,36 @@ Value Not::evalRator(const Value &rand) { // not
 
 Value If::eval(Assoc &e) {
     //TODO: To complete the if logic
-    If *if_ptr = dynamic_cast<If*>(this);
-    Value cond_val = if_ptr->cond->eval(e);
-    if (cond_val->v_type != V_BOOL) throw(RuntimeError("Condition expression does not evaluate to a boolean"));
-    Boolean *cond_bool = dynamic_cast<Boolean*>(cond_val.get());
-    if (cond_bool->b) return if_ptr->conseq->eval(e);
-    return if_ptr->alter->eval(e);
+    Value cond_val = cond->eval(e);
+    bool cond_true = !(cond_val->v_type == V_BOOL && !dynamic_cast<Boolean*>(cond_val.get())->b);
+    if (cond_true)
+        return conseq->eval(e);
+    else
+        return alter->eval(e);
 }
 
 Value Cond::eval(Assoc &env) {
     //TODO: To complete the cond logic
-    std::vector<std::vector<Expr>> clauses = this->clauses;
-    Value else_value = StringV("else");
-    for(int i=0;i<clauses.size();i++){
-        Value cond = clauses[i][0]->eval(env);
-        if(cond.get()==else_value.get()){
-            Value result=0;
-            for(int j=1;j<clauses[i].size();j++){
-                result = clauses[i][j]->eval(env);
+    for(auto &clause:clauses){
+        if(clause.empty())continue;
+        bool isElse=false;
+        if(auto varx=dynamic_cast<Var*>(clause[0].get())){
+            if(varx->x=="else"){
+                isElse=true;
+            }
         }
+        Value testVal=isElse?BooleanV(true):clause[0]->eval(env);
+        bool condTrue=true;
+        if(testVal->v_type==V_BOOL){
+            condTrue=dynamic_cast<Boolean*>(testVal.get())->b;
         }
-        if(cond->v_type != V_BOOL ){
-            throw(RuntimeError("Condition expression does not evaluate to a boolean"));
-        }
-    
-        Boolean* cond_bool = dynamic_cast<Boolean*>(clauses[i][0]->eval(env).get());
-        if(cond_bool->b){
-            Value result=0;
-            for(int j=1;j<clauses[i].size();j++){
-                result = clauses[i][j]->eval(env);
+        if(condTrue){
+            Value result=VoidV();
+            for(int i=1;i<clause.size();i++) {
+                result=clause[i]->eval(env);
             }
             return result;
-        }
+        } 
     }
     return VoidV();
 }
