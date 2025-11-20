@@ -677,15 +677,9 @@ Value IsString::evalRator(const Value &rand) { // string?
 
 Value Begin::eval(Assoc &e) {
     //TODO: To complete the begin logic
-    std::vector<Expr> es=this->es;
-    Value result=VoidV();
-    for(int i=0;i<es.size();++i){
-        try{
-        result=es[i]->eval(e);
-        }
-        catch(RuntimeError& re){
-            throw re;
-        }
+    Value result = VoidV();
+    for (auto &expr : this->es) {
+        result = expr->eval(e);
     }
     return result;
 }
@@ -700,49 +694,50 @@ Value Quote::eval(Assoc& e) {
 Value AndVar::eval(Assoc &e) { // and with short-circuit evaluation
     //TODO: To complete the and logic
     AndVar *and_ptr = dynamic_cast<AndVar*>(this);
-    std::vector<Expr> rands = and_ptr->rands;
-    Value f=StringV("#f");
-    for(int it = 0; it <rands.size(); ++it){
-        Value val = rands[it]->eval(e);
-        if(val.get()==f.get()){
-            return f;
+    if (and_ptr->rands.empty()) return BooleanV(true);
+    Value last = VoidV();
+    for (auto &rand : and_ptr->rands) {
+        Value val = rand->eval(e);
+        if (val->v_type == V_BOOL) {
+            Boolean *b = dynamic_cast<Boolean*>(val.get());
+            if (!b->b) return BooleanV(false);
         }
-        }
-    return rands.back()->eval(e);
+        last = val;
+    }
+    return last;
 }
 
 Value OrVar::eval(Assoc &e) { // or with short-circuit evaluation
     //TODO: To complete the or logic
     OrVar *or_ptr = dynamic_cast<OrVar*>(this);
-    std::vector<Expr> rands = or_ptr->rands;
-    Value f=StringV("#f");
-    for(int it = 0; it <rands.size(); ++it){
-        Value val = rands[it]->eval(e);
-        if(val.get()!=f.get()){
+    if (or_ptr->rands.empty()) return BooleanV(false);
+    for (auto &rand : or_ptr->rands) {
+        Value val = rand->eval(e);
+        if (val->v_type == V_BOOL) {
+            Boolean *b = dynamic_cast<Boolean*>(val.get());
+            if (!b->b) continue;
             return val;
         }
+        return val;
     }
-    return f;
+    return BooleanV(false);
 }
 
 Value Not::evalRator(const Value &rand) { // not
     //TODO: To complete the not logic
-    return BooleanV(rand->v_type != V_BOOL || !dynamic_cast<Boolean*>(rand.get())->b);
+    if (rand->v_type != V_BOOL) return BooleanV(true);
+    Boolean *b = dynamic_cast<Boolean*>(rand.get());
+    return BooleanV(!b->b);
 }
 
 Value If::eval(Assoc &e) {
     //TODO: To complete the if logic
     If *if_ptr = dynamic_cast<If*>(this);
-    if(if_ptr->cond->eval(e)->v_type != V_BOOL){
-        throw(RuntimeError("Condition expression does not evaluate to a boolean"));
-    }
-    Boolean* cond_bool = dynamic_cast<Boolean*>(if_ptr->cond->eval(e).get());
-    if(cond_bool->b){
-        return if_ptr->conseq->eval(e);
-    }
-    else{
-        return if_ptr->alter->eval(e);
-    }
+    Value cond_val = if_ptr->cond->eval(e);
+    if (cond_val->v_type != V_BOOL) throw(RuntimeError("Condition expression does not evaluate to a boolean"));
+    Boolean *cond_bool = dynamic_cast<Boolean*>(cond_val.get());
+    if (cond_bool->b) return if_ptr->conseq->eval(e);
+    return if_ptr->alter->eval(e);
 }
 
 Value Cond::eval(Assoc &env) {
