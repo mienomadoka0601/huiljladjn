@@ -576,7 +576,7 @@ Value GreaterVar::evalRator(const std::vector<Value> &args) { // > with multiple
 
 Value Cons::evalRator(const Value &rand1, const Value &rand2) { // cons
     //TODO: To complete the cons logic
-    return Value(new Pair(rand1, rand2));
+    return PairV(rand1, rand2);
 }
 
 Value ListFunc::evalRator(const std::vector<Value> &args) { // list function
@@ -588,7 +588,11 @@ Value ListFunc::evalRator(const std::vector<Value> &args) { // list function
 
 Value IsList::evalRator(const Value &rand) { // list?
     //TODO: To complete the list? logic
-    return BooleanV(rand->v_type == V_NULL || rand->v_type == V_PAIR);
+    Value temp=rand;
+    while(temp->v_type=V_PAIR){
+        temp=dynamic_cast<Pair*>(temp.get())->cdr;
+    }
+    return BooleanV(rand->v_type == V_NULL);
 }
 
 Value Car::evalRator(const Value &rand) { // car
