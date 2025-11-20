@@ -849,14 +849,9 @@ Value Apply::eval(Assoc &e) {
 
 Value Define::eval(Assoc &env) {
     //TODO: To complete the define logic
-    Assoc newenv=env;
-    if(!newenv.get()){
-        auto head=Assoc(nullptr);
-        newenv=extend(var,Value(nullptr),newenv);
-    }
-    else newenv->next=extend(var,Value(nullptr),newenv->next);
-    modify(var,e->eval(newenv),newenv);
-    env=newenv;
+    Value val = e->eval(env);
+    Assoc new_env_node = extend(var, val, env);
+    env = new_env_node;
     return VoidV();
 }
 
