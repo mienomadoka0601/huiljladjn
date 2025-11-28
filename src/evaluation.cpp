@@ -638,7 +638,7 @@ Value IsList::evalRator(const Value &rand) { // list?
     while(temp->v_type==V_PAIR){
         temp=dynamic_cast<Pair*>(temp.get())->cdr;
     }
-    return BooleanV(rand->v_type == V_NULL);
+    return BooleanV(temp->v_type == V_NULL);
 }
 
 Value Car::evalRator(const Value &rand) { // car
@@ -743,32 +743,25 @@ Value Quote::eval(Assoc& e) {
 
 Value AndVar::eval(Assoc &e) { // and with short-circuit evaluation
     //TODO: To complete the and logic
-    AndVar *and_ptr = dynamic_cast<AndVar*>(this);
-    if (and_ptr->rands.empty()) return BooleanV(true);
-    Value last = BooleanV(true);
-    for (auto &rand : and_ptr->rands) {
-        Value val = rand->eval(e);
-        if (val->v_type == V_BOOL) {
-            Boolean *b = dynamic_cast<Boolean*>(val.get());
-            if (!b->b) return BooleanV(false);
+    if (rands.empty()) return BooleanV(true);
+    Value last=VoidV();
+    for (auto &rand : rands) {
+        last = rand->eval(e);
+        if (last->v_type == V_BOOL && !dynamic_cast<Boolean*>(last.get())->b) {
+            return BooleanV(false);
         }
-        last = val;
     }
     return last;
 }
 
 Value OrVar::eval(Assoc &e) { // or with short-circuit evaluation
     //TODO: To complete the or logic
-    OrVar *or_ptr = dynamic_cast<OrVar*>(this);
-    if (or_ptr->rands.empty()) return BooleanV(false);
-    for (auto &rand : or_ptr->rands) {
+    if (rands.empty()) return BooleanV(false);
+    for (auto &rand : rands) {
         Value val = rand->eval(e);
-        if (val->v_type == V_BOOL) {
-            Boolean *b = dynamic_cast<Boolean*>(val.get());
-            if (!b->b) continue;
+        if (!(val->v_type == V_BOOL && !dynamic_cast<Boolean*>(val.get())->b)) {
             return val;
         }
-        return val;
     }
     return BooleanV(false);
 }
@@ -841,7 +834,7 @@ Value Apply::eval(Assoc &e) {
     
     //TODO: TO COMPLETE THE PARAMETERS' ENVIRONMENT LOGIC
     Assoc param_env = clos_ptr->env;
-    for (int i = (int)clos_ptr->parameters.size() - 1; i >= 0; --i) {
+    for (int i = args.size() - 1; i >= 0; --i) {
         param_env = extend(clos_ptr->parameters[i], args[i], param_env);
     }
     return clos_ptr->e->eval(param_env);
@@ -850,20 +843,21 @@ Value Apply::eval(Assoc &e) {
 Value Define::eval(Assoc &env) {
     //TODO: To complete the define logic
     Value val = e->eval(env);
-    Assoc new_env_node = extend(var, val, env);
-    env = new_env_node;
+    modify(var, val, env);
     return VoidV();
 }
 
 Value Let::eval(Assoc &env) {
     //TODO: To complete the let logic
-    Let *let_ptr = dynamic_cast<Let*>(this);
     Assoc new_env = env;
-    for (int i = (int)let_ptr->bind.size() - 1; i >= 0; --i) {
-        Value v = let_ptr->bind[i].second->eval(env);
-        new_env = extend(let_ptr->bind[i].first, v, new_env);
+    std::vector<Value> values;
+    for (auto &b : bind) {
+        values.push_back(b.second->eval(env));
     }
-    return let_ptr->body->eval(new_env);
+    for (size_t i = 0; i < bind.size(); ++i) {
+        new_env = extend(bind[i].first, values[i], new_env);
+    }
+    return body->eval(new_env);
 }
 
 Value Letrec::eval(Assoc &env) {

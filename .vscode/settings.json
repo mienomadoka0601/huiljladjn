@@ -54,6 +54,11 @@
         "xtree": "cpp",
         "xutility": "cpp",
         "algorithm": "cpp",
-        "optional": "cpp"
+        "optional": "cpp",
+        "deque": "cpp",
+        "list": "cpp",
+        "queue": "cpp",
+        "unordered_map": "cpp",
+        "xhash": "cpp"
     }
 }
