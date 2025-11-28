@@ -109,22 +109,32 @@ Expr List::parse(Assoc &env) {
                 return Expr(new Cond(clauses));
             }
             case E_LAMBDA: {
-                if (stxs.size() < 3) throw RuntimeError("lambda requires a parameter list and a body");
+                if (stxs.size() < 3) {
+                    throw RuntimeError("lambda requires a parameter list and a body");
+                    }
+    
                 List *plist = dynamic_cast<List*>(stxs[1].get());
-                if (!plist) throw RuntimeError("lambda parameter list must be a list of symbols");
+                if (!plist) {
+                    throw RuntimeError("lambda parameter list must be a list of symbols");
+                }
                 vector<string> names;
                 for (auto &p : plist->stxs) {
                     SymbolSyntax *sym = dynamic_cast<SymbolSyntax*>(p.get());
-                    if (!sym) throw RuntimeError("lambda parameters must be symbols");
+                    if (!sym) {
+                        throw RuntimeError("lambda parameters must be symbols");
+                    }
                     names.push_back(sym->s);
                 }
                 if (stxs.size() == 3) {
-                    Expr body = stxs[2].parse(env);
-                    return Expr(new Lambda(names, body));
+                Expr body = stxs[2]->parse(env);
+                return Expr(new Lambda(names, body));
                 } else {
                     vector<Expr> bodies;
-                    for (size_t i = 2; i < stxs.size(); ++i) bodies.push_back(stxs[i].parse(env));
-                    return Expr(new Lambda(names, Expr(new Begin(std::move(bodies)))));
+                for (size_t i = 2; i < stxs.size(); ++i) {
+                    bodies.push_back(stxs[i]->parse(env));
+                }
+                Expr body = Expr(new Begin(bodies));
+                return Expr(new Lambda(names, body));
                 }
             }
             case E_DEFINE: {
@@ -177,45 +187,63 @@ Expr List::parse(Assoc &env) {
                     }
             }
             case E_LET: {
-                if (stxs.size() < 3) throw RuntimeError("let requires bindings and a body");
-                List *bindlist = dynamic_cast<List*>(stxs[1].get());
-                if (!bindlist) throw RuntimeError("let bindings must be a list");
-                vector<pair<string, Expr>> binds;
-                Assoc new_env=env;
-                for (auto &b : bindlist->stxs) {
-                    List *pairlst = dynamic_cast<List*>(b.get());
-                    if (!pairlst || pairlst->stxs.size() != 2) throw RuntimeError("each let binding must be a (name expr) pair");
-                    SymbolSyntax *name = dynamic_cast<SymbolSyntax*>(pairlst->stxs[0].get());
-                    if (!name) throw RuntimeError("let binding name must be a symbol");
-                    new_env = extend(name->s, VoidV(), new_env);
+                if (stxs.size() < 3) {
+                    throw RuntimeError("let requires bindings and a body");
                 }
-                for (auto &b : bindlist->stxs) {
-                    List *pairlst = dynamic_cast<List*>(b.get());
+    
+                List *bindlist = dynamic_cast<List*>(stxs[1].get());
+                if (!bindlist) {
+                    throw RuntimeError("let bindings must be a list");
+                }
+                vector<pair<string, Expr>> binds;
+                Assoc new_env = env;
+                for (int i = 0; i < bindlist->stxs.size(); ++i) {
+                    List *pairlst = dynamic_cast<List*>(bindlist->stxs[i].get());
+                    if (!pairlst || pairlst->stxs.size() != 2) {
+                        throw RuntimeError("each let binding must be a (name expr) pair");
+                    }
+        
                     SymbolSyntax *name = dynamic_cast<SymbolSyntax*>(pairlst->stxs[0].get());
+                    if (!name) {
+                        throw RuntimeError("let binding name must be a symbol");
+                    }
+                    new_env = extend(name->s, VoidV(), new_env);
                     Expr val = pairlst->stxs[1]->parse(env);
                     binds.push_back(mp(name->s, val));
-                }
+                    }
                 if (stxs.size() == 3) {
-                    Expr body = stxs[2].parse(new_env);
+                    Expr body = stxs[2]->parse(new_env);
                     return Expr(new Let(binds, body));
                 } else {
                     vector<Expr> bodies;
-                    for (size_t i = 2; i < stxs.size(); ++i) bodies.push_back(stxs[i].parse(new_env));
+                    for (size_t i = 2; i < stxs.size(); ++i) {
+                        bodies.push_back(stxs[i]->parse(new_env));
+                    }
                     Expr body = Expr(new Begin(bodies));
                     return Expr(new Let(binds, body));
                 }
             }
             case E_LETREC: {
-                if (stxs.size() < 3) throw RuntimeError("letrec requires bindings and a body");
+                if (stxs.size() < 3) {
+                    throw RuntimeError("letrec requires bindings and a body");
+                }
+    
                 List *bindlist = dynamic_cast<List*>(stxs[1].get());
-                if (!bindlist) throw RuntimeError("letrec bindings must be a list");
+                if (!bindlist) {
+                    throw RuntimeError("letrec bindings must be a list");
+                }
                 vector<pair<string, Expr>> binds;
-                Assoc new_env=env;
+                Assoc new_env = env;
                 for (auto &b : bindlist->stxs) {
                     List *pairlst = dynamic_cast<List*>(b.get());
-                    if (!pairlst || pairlst->stxs.size() != 2) throw RuntimeError("each letrec binding must be a (name expr) pair");
+                    if (!pairlst || pairlst->stxs.size() != 2) {
+                        throw RuntimeError("each letrec binding must be a (name expr) pair");
+                    }
+        
                     SymbolSyntax *name = dynamic_cast<SymbolSyntax*>(pairlst->stxs[0].get());
-                    if (!name) throw RuntimeError("letrec binding name must be a symbol");
+                    if (!name) {
+                        throw RuntimeError("letrec binding name must be a symbol");
+                    }
                     new_env = extend(name->s, VoidV(), new_env);
                 }
                 for (auto &b : bindlist->stxs) {
@@ -223,13 +251,15 @@ Expr List::parse(Assoc &env) {
                     SymbolSyntax *name = dynamic_cast<SymbolSyntax*>(pairlst->stxs[0].get());
                     Expr val = pairlst->stxs[1]->parse(new_env);
                     binds.push_back({name->s, val});
-                }
+                    }
                 if (stxs.size() == 3) {
-                    Expr body = stxs[2].parse(new_env);
+                    Expr body = stxs[2]->parse(new_env);
                     return Expr(new Letrec(binds, body));
                 } else {
                     vector<Expr> bodies;
-                    for (size_t i = 2; i < stxs.size(); ++i) bodies.push_back(stxs[i].parse(new_env));
+                    for (size_t i = 2; i < stxs.size(); ++i) {
+                        bodies.push_back(stxs[i]->parse(new_env));
+                    }
                     Expr body = Expr(new Begin(bodies));
                     return Expr(new Letrec(binds, body));
                 }

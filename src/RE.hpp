@@ -4,12 +4,14 @@
 #include <exception>
 #include <string>
 
-class RuntimeError : std::exception {
-    private:
-        std::string s;
-    public:
-        RuntimeError(std::string);
-        std::string message() const;
+class RuntimeError : public std::exception {
+private:
+    std::string s;
+public:
+    RuntimeError(std::string msg) : s(msg) {}
+    const char* what() const noexcept override {
+        return s.c_str();
+    }
 };
 
 #endif
